@@ -1,9 +1,13 @@
 <template>
   <div id="app">
-    <nav>
-      <router-link to="/">Home</router-link> |
-      <router-link to="/about">About</router-link>
-    </nav>
+    <div>
+      <b-navbar toggleable="lg" type="dark" variant="dark">
+        <router-link exact-active-class="active" to="/" class="btn btn-danger"
+          >Paragon</router-link
+        >
+        <b-navbar-toggle target="nav-collapse"></b-navbar-toggle>
+      </b-navbar>
+    </div>
     <router-view />
   </div>
 </template>

@@ -14,8 +14,8 @@ class ClientsApiServices {
   deleteClient(id) {
     return http.delete(`/clients/${id}`);
   }
-  UpdateClientWithPayments(data, id) {
-    return http.put(`/clients/${id}`, data);
+  UpdateClientWithPayments(data) {
+    return http.post(`/update-clients/`, data);
   }
   getClientById(id) {
     return http.get(`/clients/${id}`);

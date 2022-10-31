@@ -3,8 +3,8 @@
     size="xl"
     v-model="createEditModal"
     @hidden="closeModal"
-    :title="'Edit Client ' + CLIENT_INFORMATION"
-    @ok.prevent="updateClient"
+    title="Add Client"
+    @ok.prevent="addClient"
   >
     <b-form-row class="mb-2">
       <b-col>
@@ -66,9 +66,19 @@
         </b-form-group>
       </b-col>
     </b-form-row>
-    <b-button type="button" v-on:click="addPayment" class="btn btn-primary">
-      <i class="fa-solid fa-plus"></i>
-    </b-button>
+    <b-row>
+      <b-col>
+        <h2>
+          <b-badge>Payments</b-badge>
+        </h2></b-col
+      >
+      <b-col>
+        <b-button type="button" v-on:click="addPayment" class="btn btn-primary">
+          <i class="fa-solid fa-plus" />
+        </b-button>
+      </b-col>
+    </b-row>
+
     <div v-for="payment in client.payments" :key="payment.id">
       <b-form-row class="mb-2">
         <b-col>
@@ -101,7 +111,6 @@
         </b-col>
       </b-form-row>
     </div>
-    <!--      <b-button type="submit" variant="primary">Submit</b-button>-->
     <!--    <b-card class="mt-3" header="Form Data Result">
       <pre class="m-0">{{ client }}</pre>
     </b-card>-->
@@ -111,8 +120,9 @@
 <script>
 import { mapGetters, mapMutations } from "vuex";
 import ClientsApiServices from "@/components/services/clients-api-services";
+
 export default {
-  name: "CreateEditModal",
+  name: "CreateClientModal",
   data() {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -129,20 +139,6 @@ export default {
       min: minDate,
       max: maxDate,
       createEditModal: false,
-
-      form: {
-        email: "",
-        name: "",
-        food: null,
-        checked: [],
-      },
-      foods: [
-        { text: "Select One", value: null },
-        "Carrots",
-        "Beans",
-        "Tomatoes",
-        "Corn",
-      ],
       show: true,
       client: {
         first_name: "",
@@ -155,6 +151,7 @@ export default {
       },
     };
   },
+
   computed: {
     ...mapGetters({
       CLIENT_INFORMATION: "CLIENT_INFORMATION",
@@ -162,52 +159,31 @@ export default {
   },
   async created() {
     this.createEditModal = true;
-    await this.getClientData();
   },
   methods: {
     ...mapMutations({
-      UPDATE_CLIENT: "UPDATE_CLIENT",
+      SAVE_CLIENT: "SAVE_CLIENT",
     }),
     addPayment() {
       if (this.client.payments.length < 5)
-        this.client.payments.push({ id: null });
+        this.client.payments.push({
+          id: null,
+        });
     },
-
-    getClientData: async function () {
-      // eslint-disable-next-line no-useless-catch
+    addClient: async function () {
       try {
-        let response = await ClientsApiServices.getClientById(
-          this.CLIENT_INFORMATION
-        );
-        console.log(response);
-        if (response.status === 200) {
-          this.client = response.data[0];
-        }
-      } catch (e) {
-        throw e;
-      }
-    },
-    updateClient: async function () {
-      try {
-        await ClientsApiServices.UpdateClientWithPayments(this.client);
-        console.log(this.client);
-        await this.UPDATE_CLIENT(this.client);
+        const response = await ClientsApiServices.createClient(this.client);
+        this.SAVE_CLIENT(response.data[0]);
+        console.log(response.data[0]);
       } catch (error) {
         console.log(error);
       }
       this.createEditModal = false;
     },
-
     closeModal() {
       this.createEditModal = false;
       this.$emit("closeModal");
     },
-
-    /*toggleModal() {
-      // We pass the ID of the button that we want to return focus to
-      // when the modal has hidden
-      this.$refs["created-edit-modal"].toggle("#toggle-btn");
-    },*/
   },
 };
 </script>

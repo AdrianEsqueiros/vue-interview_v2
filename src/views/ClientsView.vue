@@ -6,6 +6,35 @@
           <b-col align-self="center" cols="auto" class="mr-auto">
             <h3>Clients</h3>
           </b-col>
+          <b-col align-self="center">
+            <b-form-group
+              label="Filter"
+              label-for="filter-input"
+              label-cols-sm="3"
+              label-align-sm="right"
+              label-size="sm"
+              class="mb-0"
+            >
+              <b-input-group size="sm">
+                <b-form-input
+                  id="filter-input"
+                  v-model="filter"
+                  type="search"
+                  placeholder="Type to Search"
+                ></b-form-input>
+
+                <b-input-group-append>
+                  <b-button
+                    class="ml-2"
+                    variant="dark"
+                    :disabled="!filter"
+                    @click="filter = ''"
+                    >Clear</b-button
+                  >
+                </b-input-group-append>
+              </b-input-group>
+            </b-form-group>
+          </b-col>
           <b-col cols="auto"
             ><b-button
               class="btn btn-success my-2"
@@ -26,6 +55,12 @@
           :current-page="currentPage"
           :items="clientData"
           :fields="fields"
+          :filter="filter"
+          :filter-included-fields="filterOn"
+          stacked="md"
+          show-empty
+          small
+          @filtered="onFiltered"
         >
           <template #cell(actions)="data">
             <b-button
@@ -38,32 +73,54 @@
             /></b-button>
           </template>
         </b-table>
-        <b-pagination
-          align="right"
-          v-model="currentPage"
-          :total-rows="rows"
-          :per-page="perPage"
-        ></b-pagination>
+        <b-row>
+          <b-col sm="5" md="4" class="mr-auto">
+            <b-form-group
+              label="Per page"
+              label-for="per-page-select"
+              label-cols-sm="6"
+              label-cols-md="4"
+              label-cols-lg="3"
+              label-align-sm="right"
+              label-size="sm"
+              class="mb-0"
+            >
+              <b-form-select
+                id="per-page-select"
+                v-model="perPage"
+                :options="pageOptions"
+                size="sm"
+              ></b-form-select>
+            </b-form-group>
+          </b-col>
+          <b-col cols="auto">
+            <b-pagination
+              align="right"
+              v-model="currentPage"
+              :total-rows="rows"
+              :per-page="perPage"
+            ></b-pagination>
+          </b-col>
+        </b-row>
       </b-card-body>
     </b-card>
-    <create-client-modal v-if="createClientModal" @closeModal="closeModal" />
-    <create-edit-modal v-if="createEditModal" @closeModal="closeModal" />
     <add-edit-modal v-if="show" @closeModal="closeModal" />
   </div>
 </template>
 
 <script>
 import { mapActions, mapMutations } from "vuex";
-import CreateEditModal from "@/views/modals/EditClientModal";
-import CreateClientModal from "@/views/modals/CreateClientModal";
 import ClientsApiServices from "@/components/services/clients-api-services";
 import AddEditModal from "@/views/modals/AddEditModal";
+
 export default {
   name: "ClientsView",
-  components: { AddEditModal, CreateEditModal, CreateClientModal },
+  components: { AddEditModal },
   data() {
     return {
-      perPage: 3,
+      filter: null,
+      filterOn: [],
+      perPage: 5,
       currentPage: 1,
       fields: [
         {
@@ -110,6 +167,8 @@ export default {
       createClientModal: false,
       createEditModal: false,
       show: false,
+      pageOptions: [5, 10, 15, { value: 100, text: "Show a lot" }],
+
       client: {
         first_name: "",
         last_name: "",
@@ -140,7 +199,11 @@ export default {
       GET_CLIENTS: "GET_CLIENTS",
       DELETE_CLIENT: "DELETE_CLIENT",
     }),
-
+    onFiltered(filteredItems) {
+      // Trigger pagination to update the number of buttons/pages due to filtering
+      this.totalRows = filteredItems.length;
+      this.currentPage = 1;
+    },
     deleteClient: async function (id) {
       try {
         if (

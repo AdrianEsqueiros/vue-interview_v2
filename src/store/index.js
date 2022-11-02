@@ -8,13 +8,6 @@ export default new Vuex.Store({
   state: {
     client_id: null,
     clients: [],
-    /* items: [
-      { age: 40, first_name: "Dickerson", last_name: "Macdonald" },
-      { age: 21, first_name: "Larsen", last_name: "Shaw" },
-      { age: 89, first_name: "Geneva", last_name: "Wilson" },
-      { age: 38, first_name: "Jami", last_name: "Carney" },
-    ],*/
-    // msg: "Welcome to Your Vue.js App",
   },
   getters: {
     CLIENT_INFORMATION(state) {
@@ -59,13 +52,15 @@ export default new Vuex.Store({
     },
   },
   mutations: {
+    SET_CLIENT_ID(state) {
+      state.client_id = null;
+    },
     GET_CLIENTS(state, clients) {
       state.clients = clients;
     },
     DELETE_CLIENT(state, id) {
       state.clients = state.clients.filter((client) => client.id !== id);
     },
-
     GET_CLIENT_ID(state, client_id) {
       state.client_id = client_id;
     },

@@ -7,12 +7,11 @@ class ClientsApiServices {
   createClient(data) {
     return http.post("/clients", data);
   }
-  createClientWithPayment(data) {
-    return http.post("/clients", data);
-  }
-
   deleteClient(id) {
     return http.delete(`/clients/${id}`);
+  }
+  deletePayment(id) {
+    return http.delete(`/payment/${id}`);
   }
   UpdateClientWithPayments(data) {
     return http.post(`/update-clients/`, data);

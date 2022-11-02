@@ -1,17 +1,16 @@
 <template>
-  <ValidationObserver v-slot="{ handleSubmit }">
+  <ValidationObserver ref="clientModal">
     <b-modal
       centered
       size="xl"
-      v-model="showCreateModal"
+      v-model="show"
       @hidden="closeModal"
-      title="Clients"
-      hide-footer
+      :title="
+        CLIENT_INFORMATION ? 'Edit Client ' + CLIENT_INFORMATION : 'Add Client'
+      "
     >
+      <!--      :title="`${message}`"-->
       <b-card>
-        <template #header>
-          <h4 class="mb-0">Add Client</h4>
-        </template>
         <b-card-title>Personal Information</b-card-title>
         <b-list-group flush>
           <b-container class="bv-example-row bv-example-row-flex-cols">
@@ -29,7 +28,7 @@
                         placeholder="First Name"
                         v-model="client.first_name"
                       />
-                      <span>{{ errors[0] }}</span>
+                      <span class="messageError">{{ errors[0] }}</span>
                     </ValidationProvider>
                   </b-form-group>
                 </b-col>
@@ -45,7 +44,7 @@
                         placeholder="Last Name"
                         v-model="client.last_name"
                       />
-                      <span>{{ errors[0] }}</span>
+                      <span class="messageError">{{ errors[0] }}</span>
                     </ValidationProvider>
                   </b-form-group>
                 </b-col>
@@ -57,13 +56,12 @@
                   >
                     <b-form-group label="Date of Birth:">
                       <b-form-datepicker
-                        required
                         v-model="client.dob"
-                        :min="min"
-                        :max="max"
+                        :min="minDOB"
+                        :max="maxDOB"
                         locale="en"
                       />
-                      <span>{{ errors[0] }}</span>
+                      <span class="messageError">{{ errors[0] }}</span>
                     </b-form-group>
                   </ValidationProvider>
                 </b-col>
@@ -73,16 +71,16 @@
                   <b-form-group label="Phone:">
                     <ValidationProvider
                       name="phone"
-                      rules="required|double"
+                      rules="required"
                       v-slot="{ errors }"
                     >
                       <b-form-input
-                        v-mask="'(###)'"
+                        v-mask="'(###) ####-###'"
                         class="mb-2 mr-sm-2 mb-sm-0"
                         placeholder="Phone"
                         v-model="client.phone"
                       />
-                      <span>{{ errors[0] }}</span>
+                      <span class="messageError">{{ errors[0] }}</span>
                     </ValidationProvider>
                   </b-form-group>
                 </b-col>
@@ -99,7 +97,7 @@
                         placeholder="Enter email"
                         required
                       />
-                      <span>{{ errors[0] }}</span>
+                      <span class="messageError">{{ errors[0] }}</span>
                     </ValidationProvider>
                   </b-form-group>
                 </b-col>
@@ -115,7 +113,7 @@
                         placeholder="Address"
                         v-model="client.address"
                       />
-                      <span>{{ errors[0] }}</span>
+                      <span class="messageError">{{ errors[0] }}</span>
                     </validation-provider>
                   </b-form-group>
                 </b-col>
@@ -152,7 +150,7 @@
                         placeholder="Transaction ID"
                         v-model="payment.transaction"
                       />
-                      <span>{{ errors[0] }}</span>
+                      <span class="messageError">{{ errors[0] }}</span>
                     </ValidationProvider>
                   </b-form-group>
                 </b-col>
@@ -160,26 +158,33 @@
                   <b-form-group label="Amount:">
                     <ValidationProvider
                       name="amount"
-                      rules="required|min:1"
+                      rules="required|positive"
                       v-slot="{ errors }"
                     >
-                      <b-form-input
-                        class="mb-2 mr-sm-2 mb-sm-0"
-                        placeholder="Amount"
+                      <money
+                        class="form-control"
                         v-model="payment.amount"
+                        v-bind="money"
                       />
-                      <span>{{ errors[0] }}</span>
+                      <span class="messageError">{{ errors[0] }}</span>
                     </ValidationProvider>
                   </b-form-group>
                 </b-col>
                 <b-col align-self="center">
                   <b-form-group label="Date:">
-                    <b-form-datepicker
-                      v-model="payment.date"
-                      :min="min"
-                      :max="max"
-                      locale="en"
-                    />
+                    <ValidationProvider
+                      rules="required"
+                      name="Date"
+                      v-slot="{ errors }"
+                    >
+                      <b-form-datepicker
+                        v-model="payment.date"
+                        :min="minDateP"
+                        :max="maxDateP"
+                        locale="en"
+                      />
+                      <span class="messageError">{{ errors[0] }}</span>
+                    </ValidationProvider>
                   </b-form-group>
                 </b-col>
                 <b-col cols="auto">
@@ -192,13 +197,12 @@
             </b-list-group-item>
           </b-container>
         </b-list-group>
-        <b-button
-          block
-          variant="primary"
-          @click.prevent="handleSubmit(addClient)"
+      </b-card>
+      <template #modal-footer>
+        <b-button variant="primary" @click.prevent="handleSubmit"
           >Save</b-button
         >
-      </b-card>
+      </template>
     </b-modal>
   </ValidationObserver>
 </template>
@@ -206,10 +210,18 @@
 <script>
 import { mapGetters, mapMutations } from "vuex";
 import ClientsApiServices from "@/components/services/clients-api-services";
+import { Money } from "v-money";
 
 import { extend } from "vee-validate";
 import * as rules from "vee-validate/dist/rules";
 import { messages } from "vee-validate/dist/locale/en.json";
+
+extend("positive", (value) => {
+  if (value >= 0) {
+    return true;
+  }
+  return "This field must be a positive number";
+});
 
 Object.keys(rules).forEach((rule) => {
   extend(rule, {
@@ -219,29 +231,36 @@ Object.keys(rules).forEach((rule) => {
 });
 
 export default {
-  name: "CreateClientModal",
+  components: { Money },
+
+  name: "AddEditModal",
   data() {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     // 15th two months prior
-    const minDate = new Date(today);
-    minDate.setMonth(minDate.getMonth() - 1560);
-    minDate.setDate(1);
+    const minDateDOB = new Date(today);
+    minDateDOB.setMonth(minDateDOB.getMonth() - 1560);
+    minDateDOB.setDate(1);
 
     const minDatePay = new Date(today);
-    minDatePay.setMonth(minDatePay.getMonth() - 120);
+    minDatePay.setMonth(minDatePay.getMonth() - 60);
     minDatePay.setDate(1);
 
     // 15th in two months
-    const maxDate = new Date(today);
-    maxDate.setMonth(maxDate.getMonth());
-    maxDate.setDate(today.getDay() - 1);
+    const maxDateDOB = new Date(today);
+    maxDateDOB.setMonth(maxDateDOB.getMonth() - 216);
+    maxDateDOB.setDate(today.getDay() - 1);
+
+    const maxDatePay = new Date(today);
+    maxDatePay.setMonth(maxDatePay.getMonth());
+    maxDatePay.setDate(today.getDay() - 1);
 
     return {
-      value: "",
-      min: minDate,
-      max: maxDate,
-      showCreateModal: false,
+      show: false,
+      minDOB: minDateDOB,
+      maxDOB: maxDateDOB,
+      minDateP: minDatePay,
+      maxDateP: maxDatePay,
       client: {
         first_name: "",
         last_name: "",
@@ -251,44 +270,97 @@ export default {
         address: "",
         payments: [{}],
       },
+
+      money: {
+        decimal: ",",
+        thousands: ".",
+        prefix: "$ ",
+        precision: 2,
+        // masked: false /* doesn't work with directive */,
+      },
+      id: "",
     };
+  },
+  created() {
+    this.show = true;
+    if (this.CLIENT_INFORMATION) {
+      this.getClientData();
+    }
   },
   computed: {
     ...mapGetters({
       CLIENT_INFORMATION: "CLIENT_INFORMATION",
     }),
-    ...mapMutations({
-      DELETE_CLIENT: "DELETE_CLIENT",
-    }),
-  },
-  created() {
-    this.showCreateModal = true;
   },
   methods: {
     ...mapMutations({
       SAVE_CLIENT: "SAVE_CLIENT",
+      UPDATE_CLIENT: "UPDATE_CLIENT",
+      DELETE_CLIENT: "DELETE_CLIENT",
+      SET_CLIENT_ID: "SET_CLIENT_ID",
     }),
+    async handleSubmit() {
+      const validate = await this.$refs.clientModal.validate();
+      if (validate) {
+        if (this.CLIENT_INFORMATION) {
+          await this.updateClient();
+        } else {
+          await this.addClient();
+        }
+      }
+    },
     addPayment() {
       if (this.client.payments.length < 5)
-        this.client.payments.push({
-          id: null,
-        });
+        this.client.payments.push({ id: null });
     },
-    deletePayment() {
-      this.client.payments.pop();
+    getClientData: async function () {
+      // eslint-disable-next-line no-useless-catch
+      try {
+        let response = await ClientsApiServices.getClientById(
+          this.CLIENT_INFORMATION
+        );
+        this.client = response.data[0];
+      } catch (e) {
+        throw e;
+      }
     },
     addClient: async function () {
       try {
         const response = await ClientsApiServices.createClient(this.client);
         this.SAVE_CLIENT(response.data[0]);
-        console.log(response.data[0]);
+        // console.log(response.data[0]);
       } catch (error) {
         console.log(error);
       }
-      this.showCreateModal = false;
+      this.show = false;
     },
+    updateClient: async function () {
+      try {
+        await ClientsApiServices.UpdateClientWithPayments(this.client);
+        await this.UPDATE_CLIENT(this.client);
+      } catch (error) {
+        console.log(error);
+      }
+      this.show = false;
+    },
+    deletePayment: async function (id, i) {
+      try {
+        if (id === null) {
+          this.client.payments.splice(i, 1);
+        } else {
+          await ClientsApiServices.deletePayment(id);
+          this.client.payments = this.client.payments.filter(
+            (pay) => pay.id !== id
+          );
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    },
+
     closeModal() {
-      this.showCreateModal = false;
+      this.show = false;
+      this.SET_CLIENT_ID();
       this.$emit("closeModal");
     },
   },
@@ -296,7 +368,7 @@ export default {
 </script>
 
 <style scoped>
-span {
+.messageError {
   color: #dc3545;
 }
 </style>

@@ -136,7 +136,7 @@
               <b-row
                 align-v="center"
                 v-for="(payment, i) in client.payments"
-                :key="payment.id"
+                :key="i"
               >
                 <b-col class="my-2">
                   <b-form-group label="Transaction ID:">
@@ -158,37 +158,55 @@
                   <b-form-group label="Amount:">
                     <ValidationProvider
                       name="amount"
-                      rules="required|positive"
-                      v-slot="{ errors }"
+                      rules="positive"
+                      v-slot="{ changed, errors }"
                     >
                       <money
                         class="form-control"
                         v-model="payment.amount"
                         v-bind="money"
+                        @input="onChangeMoney(changed, payment)"
                       />
-                      <span class="messageError">{{ errors[0] }}</span>
+                      <span class="messageError">{{
+                        payment.init && errors[0] ? errors[0] : null
+                      }}</span>
                     </ValidationProvider>
                   </b-form-group>
                 </b-col>
+
                 <b-col align-self="center">
-                  <b-form-group label="Date:">
-                    <ValidationProvider
-                      rules="required"
-                      name="Date"
-                      v-slot="{ errors }"
-                    >
-                      <b-form-datepicker
-                        v-model="payment.date"
-                        :min="minDateP"
-                        :max="maxDateP"
-                        locale="en"
-                      />
-                      <span class="messageError">{{ errors[0] }}</span>
-                    </ValidationProvider>
+                  <b-form-group label="Date" label-for="date">
+                    <cleave
+                      id="date"
+                      v-model="payment.date"
+                      class="form-control"
+                      :raw="false"
+                      placeholder="DD-MM-YYYY"
+                    />
                   </b-form-group>
                 </b-col>
+                <!--
+                                <b-col align-self="center">
+                                  <b-form-group label="Date:">
+                                    <ValidationProvider
+                                      rules="required"
+                                      name="Date"
+                                      v-slot="{ errors }"
+                                    >
+                                      <b-form-datepicker
+                                        v-model="payment.date"
+                                        :min="minDateP"
+                                        :max="maxDateP"
+                                        locale="en"
+                                      />
+                                      <span class="messageError">{{ errors[0] }}</span>
+                                    </ValidationProvider>
+                                  </b-form-group>
+                                </b-col>
+                -->
                 <b-col cols="auto">
                   <b-button
+                    v-if="i"
                     class="btn btn-danger"
                     @click="deletePayment(payment.id, i)"
                     ><i class="fas fa-trash" /></b-button
@@ -210,6 +228,8 @@
 <script>
 import { mapGetters, mapMutations } from "vuex";
 import ClientsApiServices from "@/components/services/clients-api-services";
+import Cleave from "vue-cleave-component";
+
 import { Money } from "v-money";
 
 import { extend } from "vee-validate";
@@ -217,10 +237,10 @@ import * as rules from "vee-validate/dist/rules";
 import { messages } from "vee-validate/dist/locale/en.json";
 
 extend("positive", (value) => {
-  if (value >= 0) {
+  if (value > 0) {
     return true;
   }
-  return "This field must be a positive number";
+  return "The amount must be at least $1";
 });
 
 Object.keys(rules).forEach((rule) => {
@@ -231,7 +251,7 @@ Object.keys(rules).forEach((rule) => {
 });
 
 export default {
-  components: { Money },
+  components: { Money, Cleave },
 
   name: "AddEditModal",
   data() {
@@ -268,17 +288,28 @@ export default {
         phone: "",
         email: "",
         address: "",
-        payments: [{}],
+        payments: [
+          {
+            id: null,
+            init: false,
+            amount: 0.0,
+          },
+        ],
       },
-
+      date: {
+        date: true,
+        delimiter: "-",
+        datePattern: ["d", "m", "Y"],
+      },
       money: {
         decimal: ",",
         thousands: ".",
         prefix: "$ ",
         precision: 2,
-        // masked: false /* doesn't work with directive */,
+        masked: false,
       },
       id: "",
+      cont: false,
     };
   },
   created() {
@@ -287,6 +318,7 @@ export default {
       this.getClientData();
     }
   },
+  mounted() {},
   computed: {
     ...mapGetters({
       CLIENT_INFORMATION: "CLIENT_INFORMATION",
@@ -309,9 +341,15 @@ export default {
         }
       }
     },
+    onChangeMoney(changed, payment) {
+      if (changed && this.cont) {
+        payment.init = true;
+      }
+      this.cont = true;
+    },
     addPayment() {
       if (this.client.payments.length < 5)
-        this.client.payments.push({ id: null });
+        this.client.payments.push({ id: null, init: false, amount: 0 });
     },
     getClientData: async function () {
       // eslint-disable-next-line no-useless-catch
